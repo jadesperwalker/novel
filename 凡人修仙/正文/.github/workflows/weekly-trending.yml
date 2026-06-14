@@ -1,0 +1,49 @@
+name: 每周GitHub高星项目搜索
+
+on:
+  schedule:
+    # 每周日 08:00 北京时间 (00:00 UTC)
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+    inputs:
+      min_stars:
+        description: "最低星数阈值"
+        required: false
+        default: "50"
+      top_n:
+        description: "返回项目数量"
+        required: false
+        default: "20"
+
+jobs:
+  search-trending:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装依赖
+        run: pip install requests
+
+      - name: 搜索高星项目
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MIN_STARS: ${{ github.event.inputs.min_stars || '50' }}
+          TOP_N: ${{ github.event.inputs.top_n || '20' }}
+        run: python scripts/search_trending.py
+
+      - name: 创建 Issue 通知
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "📊 本周GitHub高星项目汇总 ($(date +%Y-%m-%d))"
+          content-filepath: ./trending-report.md
+          labels: "automation, trending"
